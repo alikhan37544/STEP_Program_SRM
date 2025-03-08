@@ -1,0 +1,9 @@
+item_id,name,description,is_combo
+1,Popcorn,Salted popcorn,False
+2,Nachos,Cheese nachos,False
+3,Combo Meal,Popcorn + Drink,True
+4,Soft Drink,Carbonated beverage,False
+5,Hot Dog,Classic hot dog,False
+6,Ice Cream,Vanilla ice cream,False
+7,Family Combo,2 Popcorns + 2 Drinks,True
+8,Candy,Assorted candies,False
