@@ -89,6 +89,10 @@ def infer_schema_from_csv(csv_file):
         encoding = detect_file_encoding(csv_file)
         print(f"Detected encoding: {encoding}")
         
+        # Ensure we never use utf8mb4 as a Python encoding
+        if encoding.lower() == 'utf8mb4':
+            encoding = 'utf-8'
+        
         # Count total rows for progress reporting
         try:
             with open(csv_file, 'r', encoding=encoding, errors='replace') as f:
@@ -195,6 +199,10 @@ def import_csv_to_table(connection, csv_file, table_name):
         # Detect file encoding
         encoding = detect_file_encoding(csv_file)
         
+        # Ensure we never use utf8mb4 as a Python encoding
+        if encoding.lower() == 'utf8mb4':
+            encoding = 'utf-8'
+        
         # Get total rows for progress bar
         try:
             with open(csv_file, 'r', encoding=encoding, errors='replace') as f:
@@ -218,58 +226,27 @@ def import_csv_to_table(connection, csv_file, table_name):
             for chunk in pd.read_csv(csv_file, chunksize=chunk_size, encoding=encoding, 
                                      on_bad_lines='skip', low_memory=False):
                 # Sanitize column names
-                chunk.columns = [sanitize_column_name(col) for col in chunk.columns]
+                sanitized_columns = [sanitize_column_name(col) for col in chunk.columns]
+                chunk.columns = sanitized_columns
                 
-                # Replace inf/-inf with NaN (MySQL doesn't support infinity)
+                # Replace inf values with NaN
                 for col in chunk.select_dtypes(include=['float', 'float64']).columns:
                     chunk[col] = chunk[col].replace([np.inf, -np.inf], np.nan)
                 
-                # Insert data
-                chunk.to_sql(name=table_name, con=engine, if_exists='append', index=False)
+                # Import chunk to database
+                chunk.to_sql(name=table_name, con=engine, if_exists='append', 
+                           index=False, method='multi')
                 
-                # Update progress bar
+                # Update progress
                 if pbar.total:
                     pbar.update(len(chunk))
-        
+                    
         print(f"Data imported successfully into table '{table_name}'")
         return True
-    except Exception as e:
-        print(f"SQLAlchemy import failed: {e}")
-        print("Trying alternative import method...")
         
-        try:
-            # Fallback to manual insert
-            cursor = connection.cursor()
-            
-            # Read CSV manually
-            df = pd.read_csv(csv_file, encoding=encoding, on_bad_lines='skip')
-            df.columns = [sanitize_column_name(col) for col in df.columns]
-            
-            # Replace inf/-inf with NULL for MySQL
-            for col in df.select_dtypes(include=['float', 'float64']).columns:
-                df[col] = df[col].replace([np.inf, -np.inf], np.nan)
-            
-            # Prepare SQL query for inserting data
-            placeholders = ", ".join(["%s"] * len(df.columns))
-            columns = ", ".join([f"`{col}`" for col in df.columns])
-            insert_query = f"INSERT INTO `{table_name}` ({columns}) VALUES ({placeholders})"
-            
-            # Convert DataFrame to list of tuples for insertion
-            values = [tuple(x) for x in df.replace({np.nan: None}).values]
-            
-            # Insert data in batches
-            batch_size = 1000
-            for i in tqdm(range(0, len(values), batch_size), desc=f"Importing {table_name}"):
-                batch = values[i:i+batch_size]
-                cursor.executemany(insert_query, batch)
-                connection.commit()
-            
-            cursor.close()
-            print(f"Data imported using manual method into table '{table_name}'")
-            return True
-        except Error as e2:
-            print(f"Alternative import failed: {e2}")
-            return False
+    except Exception as e:
+        print(f"Error importing data: {e}")
+        return False
 
 def main():
     # Database connection parameters
