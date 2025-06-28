@@ -19,8 +19,7 @@ push back / push front for traversal
 #include <sstream>
 #include <functional>
 
-// Let's now create a binary tree
-
+// Binary tree node
 template <typename T>
 class BinaryTreeNode {
 public:
@@ -30,12 +29,75 @@ public:
     BinaryTreeNode(T value) : data(value), left(nullptr), right(nullptr) {}
 };
 
+// Doubly linked list node for level order pointer list
+template <typename T>
+struct LevelOrderPointerListNode {
+    T* dataPtr;
+    LevelOrderPointerListNode* prev;
+    LevelOrderPointerListNode* next;
+    LevelOrderPointerListNode(T* ptr) : dataPtr(ptr), prev(nullptr), next(nullptr) {}
+};
+
+// Doubly linked list for level order pointer list
+template <typename T>
+class LevelOrderPointerList {
+    LevelOrderPointerListNode<T>* head;
+    LevelOrderPointerListNode<T>* tail;
+    size_t count;
+public:
+    LevelOrderPointerList() : head(nullptr), tail(nullptr), count(0) {}
+    ~LevelOrderPointerList() { clear(); }
+
+    void push_back(T* ptr) {
+        auto* node = new LevelOrderPointerListNode<T>(ptr);
+        if (!tail) {
+            head = tail = node;
+        } else {
+            tail->next = node;
+            node->prev = tail;
+            tail = node;
+        }
+        ++count;
+    }
+
+    void clear() {
+        auto* curr = head;
+        while (curr) {
+            auto* tmp = curr;
+            curr = curr->next;
+            delete tmp;
+        }
+        head = tail = nullptr;
+        count = 0;
+    }
+
+    LevelOrderPointerListNode<T>* getHead() const { return head; }
+    LevelOrderPointerListNode<T>* getTail() const { return tail; }
+    size_t size() const { return count; }
+
+    // Bidirectional iterator
+    class Iterator {
+        LevelOrderPointerListNode<T>* node;
+    public:
+        Iterator(LevelOrderPointerListNode<T>* n) : node(n) {}
+        Iterator& operator++() { if (node) node = node->next; return *this; }
+        Iterator& operator--() { if (node) node = node->prev; return *this; }
+        T* operator*() const { return node ? node->dataPtr : nullptr; }
+        bool operator!=(const Iterator& other) const { return node != other.node; }
+        bool operator==(const Iterator& other) const { return node == other.node; }
+        bool valid() const { return node != nullptr; }
+    };
+
+    Iterator begin() const { return Iterator(head); }
+    Iterator end() const { return Iterator(nullptr); }
+    Iterator rbegin() const { return Iterator(tail); }
+};
+
 template <typename T>
 class BinaryTree {
 private:
     std::unique_ptr<BinaryTreeNode<T>> root;
 
-    // Insert in level order (for a complete binary tree)
     void insertLevelOrder(T value) {
         if (!root) {
             root = std::make_unique<BinaryTreeNode<T>>(value);
@@ -101,7 +163,6 @@ private:
 public:
     BinaryTree() : root(nullptr) {}
 
-    // Use level order insert for a complete binary tree
     void insert(T value) {
         insertLevelOrder(value);
     }
@@ -181,7 +242,22 @@ public:
         root = deserialize();
     }
 
-    // Iterator class for in-order traversal
+    // --- Level Order Pointer List Creation ---
+    LevelOrderPointerList<T> createLevelOrderPointerList() {
+        LevelOrderPointerList<T> list;
+        if (!root) return list;
+        std::queue<BinaryTreeNode<T>*> q;
+        q.push(root.get());
+        while (!q.empty()) {
+            BinaryTreeNode<T>* node = q.front(); q.pop();
+            list.push_back(&(node->data));
+            if (node->left) q.push(node->left.get());
+            if (node->right) q.push(node->right.get());
+        }
+        return list;
+    }
+
+    // --- Existing Iterators (unchanged) ---
     class InOrderIterator {
         std::stack<BinaryTreeNode<T>*> stk;
         void pushLeft(BinaryTreeNode<T>* node) {
@@ -203,7 +279,6 @@ public:
 
     InOrderIterator inOrderBegin() { return InOrderIterator(root.get()); }
 
-    // Iterator class for pre-order traversal
     class PreOrderIterator {
         std::stack<BinaryTreeNode<T>*> stk;
     public:
@@ -220,7 +295,6 @@ public:
 
     PreOrderIterator preOrderBegin() { return PreOrderIterator(root.get()); }
 
-    // Iterator class for post-order traversal
     class PostOrderIterator {
         std::stack<BinaryTreeNode<T>*> stk;
         BinaryTreeNode<T>* lastVisited = nullptr;
@@ -248,7 +322,6 @@ public:
 
     PostOrderIterator postOrderBegin() { return PostOrderIterator(root.get()); }
 
-    // Iterator class for level-order traversal
     class LevelOrderIterator {
         std::queue<BinaryTreeNode<T>*> q;
     public:
@@ -299,6 +372,31 @@ int main() {
         std::cout << it.next() << " ";
     }
     std::cout << std::endl;
+
+    // --- Level Order Pointer List Usage ---
+    auto pointerList = tree.createLevelOrderPointerList();
+
+    std::cout << "Level-order pointer list (forward): ";
+    for (auto it = pointerList.begin(); it.valid(); ++it) {
+        std::cout << **it << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Level-order pointer list (backward): ";
+    for (auto it = pointerList.rbegin(); it.valid(); --it) {
+        std::cout << **it << " ";
+    }
+    std::cout << std::endl;
+
+    // Example: Save a pointer and increment/decrement
+    auto it = pointerList.begin();
+    if (it.valid()) {
+        std::cout << "First value: " << **it << std::endl;
+        ++it;
+        if (it.valid()) std::cout << "Second value: " << **it << std::endl;
+        --it;
+        if (it.valid()) std::cout << "Back to first value: " << **it << std::endl;
+    }
 
     return 0;
 }

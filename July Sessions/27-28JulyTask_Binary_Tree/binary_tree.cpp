@@ -61,6 +61,8 @@ private:
         }
     }
 
+
+    // This function assumes that we have everything already there, and we are supposed to figure 
     void inorderTraversal(const std::unique_ptr<BinaryTreeNode<T>>& node, std::vector<T>& result) const {
         if (node) {
             inorderTraversal(node->left, result);
@@ -162,6 +164,24 @@ public:
         serialize(root);
         return oss.str();
     }
+
+    // template<class T>
+    // class GenericVectorimpl : public VectorImpl<T> {
+    //     public:
+    //     void allocateunsigned int sz int capacity) override {
+    //         if constexpr (std::is_same_v<T, char*>) {
+    //             // For char*, initialize all pointers to nullptr
+    //             F = new T[capacity];
+    //             for(int i = 0; i < capacity; ++i) {
+    //                 static_cast<char**>(static_cast<void*>(F))[i] = nullptr;
+    //             }
+    //         } else {
+    //             F = new T[capacity];
+    //         }
+    //         E = F + sz;
+    //         L = E - 1;
+    //     }
+
 
     void fromString(const std::string& str) {
         std::istringstream iss(str);
@@ -275,6 +295,11 @@ int main() {
     tree.insert(5);
     tree.insert(6);
     tree.insert(7);
+    tree.insert(8);
+    tree.insert(9);
+    tree.insert(10);
+    tree.insert(11);
+
 
     std::cout << "In-order traversal: ";
     for (auto it = tree.inOrderBegin(); it.hasNext(); ) {

@@ -12,6 +12,8 @@ public:
     virtual ~VectorImpl() = default;
 
     // Allocate memory for the vector (not used in this implementation, handled by Vector)
+    // Debugging
+    
     virtual void allocate(unsigned int sz, int capacity) = 0;
 
     // Initialize the vector with a fill value
